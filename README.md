@@ -18,10 +18,47 @@ While BikeCU has been primarily designed for the Schwinn IC4, it should be versa
 ## Hardware Required
 - ESP32-C3 ([source](https://www.aliexpress.com/item/1005004490215444.html))
 - TFT Display (1.77" [source](https://www.aliexpress.com/item/1005003797803015.html))
-- USB-C cable
+- USB-A to USB-C cable
 - M2 machine screws for case install
+- Protoboard (3cm * 7cm)
+- Hot-glue gun
 
 While BikeCU has been designed for the ESP32-C3, other ESP32 variants with BLE support should also work. Note that the ESP32-S2 is not compatible.
 
 ## Setup
-_Coming Soon_
+
+
+### Project Wiring
+
+| ESP32 | LCD Display |
+|---|---|
+| GND | GND |
+| 3.3V | VCC |
+| IO02 | SCK |
+| IO03 | SDA |
+| IO10 | RES |
+| IO06 | RS |
+| IO07 | CS |
+| IO05 | LEDA |
+
+![Display Wiring](images/display_wiring.jpg)
+
+### Flashing Firmware
+_In progress_
+
+### Soldering Protoboard
+_In progress_
+
+### 3D Printing Case
+Print with no supports like so:
+![slicer](images/3d_printer_slicer.png)
+
+Place ESP32 onto protoboard and into the case:
+![final assembly](images/board_in_case.jpg)
+
+### Final Assembly
+- Insert display onto the lid and use hot glue to keep in place
+- Place lid onto the case
+- Screw four M2 machine screws into the four outside holes
+- Final assembly will look like:
+![final assembly](images/finished_install.jpg)
