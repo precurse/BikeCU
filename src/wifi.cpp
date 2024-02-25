@@ -1,3 +1,13 @@
+#include <WiFi.h>
+#include <ArduinoOTA.h>
+#include "config.h"
+
+WiFiManager wifiManager;
+
+// TODO: Move to WifiManager
+const char* ota_name = "esp32-bikecu";
+const char* ota_password = "foobar";
+
 void taskKeepWifiAlive(void* parameter) {
   for (;;) {
     if (WiFi.status() == WL_CONNECTED) {
@@ -40,8 +50,8 @@ void taskKeepWifiAlive(void* parameter) {
       vTaskDelay(WIFI_RECOVER_TIME_MS / portTICK_PERIOD_MS);
       continue;
     }
-    ArduinoOTA.setHostname((const char*)"esp32-bikecu");
-    ArduinoOTA.setPassword((const char*)"foobar");
+    ArduinoOTA.setHostname(ota_name);
+    ArduinoOTA.setPassword(ota_password);
     ArduinoOTA.begin();
     Serial.println("[WIFI] OTA Initialized");
     Serial.println("[WIFI] Connected: ");

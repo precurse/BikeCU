@@ -1,3 +1,6 @@
+#include "config.h"
+#include <HTTPClient.h>
+
 void taskInflux(void* parameter) {
   int batchCount;
   String url = String(INFLUX_URL) + "/api/v2/write?bucket=" + INFLUX_DB + "&precision=" + INFLUX_PRECISION;

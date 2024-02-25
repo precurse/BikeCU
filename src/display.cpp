@@ -1,7 +1,12 @@
-void updateDisplayMetric(char* metric, int val, Adafruit_ST7735* tft) {
+#include "config.h"
+
+#include <Arduino.h>
+#include <Adafruit_ST7735.h>
+
+void updateDisplayMetric(const char* metric, int val, Adafruit_ST7735* tft) {
   int x = 0;
   int y = 0;
-  char* disp_metric;
+  const char* disp_metric;
   
   if (strcmp(metric, "PWR") == 0) {
     disp_metric = metric;

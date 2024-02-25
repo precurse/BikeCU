@@ -1,4 +1,5 @@
 # BikeCU
+![workflow](https://github.com/precurse/bikecu/actions/workflows/platformio.yml/badge.svg)
 ## Background
 BikeCU is an open-source project that enhances the functionality of the Schwinn IC4 indoor cycling bike by providing additional data not available on its built-in display. This includes power (watt) data, integer-style RPM, maximum heart rate, and more. Additionally, BikeCU facilitates the seamless transfer of data to a time-series database, such as InfluxDB, with per-second granularity. Users can then choose to export the data in TCX format for archival purposes and upload it to popular data aggregators like Runalyze or Strava.
 
@@ -17,7 +18,7 @@ While BikeCU has been primarily designed for the Schwinn IC4, it should be versa
 
 ## Hardware Required
 - ESP32-C3 ([source](https://www.aliexpress.com/item/1005004490215444.html))
-- TFT Display (1.77" [source](https://www.aliexpress.com/item/1005003797803015.html))
+- TFT ST7735-based Display (1.77" [source](https://www.aliexpress.com/item/1005003797803015.html))
 - USB-A to USB-C cable
 - M2 machine screws for case install
 - Protoboard (3cm * 7cm)
@@ -43,8 +44,17 @@ While BikeCU has been designed for the ESP32-C3, other ESP32 variants with BLE s
 
 ![Display Wiring](images/display_wiring.jpg)
 
+### Compiling
+```sh
+git clone https://github.com/precurse/bikecu
+pip3 install platformio
+pio run
+```
+
 ### Flashing Firmware
-_In progress_
+```sh
+pio run -v -t upload --upload-port /dev/ttyACM0
+```
 
 ### Soldering Protoboard
 _In progress_
