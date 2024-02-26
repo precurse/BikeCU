@@ -17,7 +17,7 @@ While BikeCU has been primarily designed for the Schwinn IC4, it should be versa
 - *Data Ownership and Control*: BikeCU prioritizes user data privacy, allowing you to be the owner of your fitness data. You have full control over how and where your data is stored and shared.
 
 ## Hardware Required
-- ESP32-C3 ([source](https://www.aliexpress.com/item/1005004490215444.html))
+- ESP32-C3 ([source](https://www.aliexpress.com/item/1005004490215444.html)) [board details](https://wiki.luatos.org/chips/esp32c3/board.html)
 - TFT ST7735-based Display (1.77" [source](https://www.aliexpress.com/item/1005003797803015.html))
 - USB-A to USB-C cable
 - M2 machine screws for case install

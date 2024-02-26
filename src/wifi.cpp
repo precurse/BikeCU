@@ -11,8 +11,10 @@ const char* ota_password = "foobar";
 void taskKeepWifiAlive(void* parameter) {
   for (;;) {
     if (WiFi.status() == WL_CONNECTED) {
-      // Serial.print("[WIFI] High water mark (words): ");
-      // Serial.println(uxTaskGetStackHighWaterMark(NULL));
+      #ifdef DEBUG
+      Serial.print("[WIFI] High water mark (words): ");
+      Serial.println(uxTaskGetStackHighWaterMark(NULL));
+      #endif
       vTaskDelay(10000 / portTICK_PERIOD_MS);
       continue;
     }

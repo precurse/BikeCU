@@ -16,8 +16,8 @@
 #include <wifi.h>
 
 // Globals
-QueueHandle_t dataQueue = nullptr;
-QueueHandle_t serialQ = nullptr;
+QueueHandle_t dataQueue;
+QueueHandle_t serialQ;
 SemaphoreHandle_t bikeDataMutex = xSemaphoreCreateMutex();
 BikeData *bikeData;
 CycleSession *cycleSession;
@@ -166,6 +166,11 @@ void taskSession(void *parameter)
       xQueueSend(dataQueue, cycleSession, portMAX_DELAY);
     }
 
+    #ifdef DEBUG
+    Serial.print("[SESSION] High water mark (words): ");
+    Serial.println(uxTaskGetStackHighWaterMark(NULL));
+    #endif
+
     // BLE data returns data every 1/3 of a second
     vTaskDelay(400 / portTICK_PERIOD_MS);
   }
@@ -218,14 +223,14 @@ void setup()
   #endif
 
   // xTaskCreate(taskSerialPrint, "SERIAL_HANDLE", 1000, NULL, 1, NULL);
-  // xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
+  xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
   xTaskCreate(taskOta, "OTA_HANDLE", 10000, NULL, 1, NULL);
 
   // Remove Arduino setup and loop tasks
-  //vTaskDelete(NULL);
+  vTaskDelete(NULL);
 }
 
 void loop()
 {
-  //ArduinoOTA.handle();
+  ArduinoOTA.handle();
 }

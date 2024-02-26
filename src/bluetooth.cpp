@@ -354,8 +354,10 @@ void taskBLE(void *parameter)
     // Serial.println("[BLE] Ending taskBLE loop");
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    // print remaining
-    // Serial.print("[BLE] High water mark (words): ");
-    // Serial.println(uxTaskGetStackHighWaterMark(NULL));
+#ifdef DEBUG
+    // print remaining memory
+    Serial.print("[BLE] High water mark (words): ");
+    Serial.println(uxTaskGetStackHighWaterMark(NULL));
+#endif
   }
 }
