@@ -15,11 +15,16 @@
 #include <influxdb.h>
 #include <wifi.h>
 
+// Globals
 QueueHandle_t dataQueue = nullptr;
 QueueHandle_t serialQ = nullptr;
-SemaphoreHandle_t bikeDataMutex = nullptr;
+SemaphoreHandle_t bikeDataMutex = xSemaphoreCreateMutex();
+BikeData *bikeData;
+CycleSession *cycleSession;
+StateSession stateSession;
 
-void initializeBikeData() {
+void initializeBikeData()
+{
   bikeData->header = 0;
   bikeData->speed = 0;
   bikeData->cadence = 0;
@@ -34,7 +39,8 @@ void initializeBikeData() {
   bikeData->hrCnt = 0;
 }
 
-void initializeSession() {
+void initializeSession()
+{
   stateSession = NotStarted;
 
   initializeBikeData();
@@ -48,81 +54,19 @@ void initializeSession() {
 }
 
 // TODO: Fix
-void SerialQueueSend(String msg) {
+void SerialQueueSend(String msg)
+{
   xQueueSend(serialQ, &msg, portMAX_DELAY);
 }
 
-void SerialQueueSend(int msg) {
+void SerialQueueSend(int msg)
+{
   String strMsg = String(msg);
   xQueueSend(serialQ, &strMsg, portMAX_DELAY);
 }
 
-void taskSession(void* parameter) {
-  uint16_t speed;
-  uint16_t power;
-  uint16_t cadence;
-  uint8_t hr;
-
-  time_t last_metric_ts;  // used to track last time a metric was passed to queue
-
-  for (;;) {
-    // Wait for NTP
-    if (getUnixTimestamp() < 1000) {
-      Serial.println("[SESSION] Waiting for NTP to sync");
-      vTaskDelay(500 / portTICK_PERIOD_MS);
-      continue;
-    }
-
-    if (stateSession == NotStarted && bikeData->speed > 0) {
-      startSession();
-    } else if (stateSession == Paused && bikeData->speed > 0) {
-      resumeSession();
-    } else if (stateSession == Running && bikeData->speed == 0) {
-      pauseSession();
-      Serial.println("[SESSION] Session paused");
-      continue;
-    } else if (stateSession == Paused && bikeData->speed == 0) {
-      // End session if paused for 5 minutes
-      if (getUnixTimestamp() - cycleSession->paused_ts > 300) {
-        stateSession = Ended;
-
-        // Wait for 1 second before restarting
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        ESP.restart();
-      }
-      continue;
-    } else if (stateSession == NotStarted) {
-      continue;
-    }
-
-    // Get live bike metrics for session
-    if (xSemaphoreTake(bikeDataMutex, portMAX_DELAY) == pdTRUE) {
-      cycleSession->data_last = *bikeData;
-      xSemaphoreGive(bikeDataMutex);
-    } else {
-      const char* msg = "[Session] Failed to get mutex";
-      xQueueSend(serialQ, msg, portMAX_DELAY);
-      continue;
-    }
-    BikeData* reading = &cycleSession->data_last;
-    time_t ts = getUnixTimestamp();
-
-    //updateMetrics(reading->speed, reading->power, reading->cadence, reading->hr, ts);
-    updateMetrics(ts);
-
-    // printBikeData();
-
-    // Only write to queue 1x a second
-    if (ts > last_metric_ts) {
-      xQueueSend(dataQueue, cycleSession, portMAX_DELAY);
-    }
-
-    // BLE data returns data every 1/3 of a second
-    vTaskDelay(400 / portTICK_PERIOD_MS);
-  }
-}
-
-void printBikeData() {
+void printBikeData()
+{
   Serial.print("Power: ");
   Serial.print(cycleSession->data_last.power);
   Serial.print(" avg: ");
@@ -145,32 +89,121 @@ void printBikeData() {
   Serial.println(cycleSession->calories);
 }
 
-void taskSerialPrint(void* parameter) {
+void taskSession(void *parameter)
+{
+  uint16_t speed;
+  uint16_t power;
+  uint16_t cadence;
+  uint8_t hr;
+
+  time_t last_metric_ts; // used to track last time a metric was passed to queue
+
+  for (;;)
+  {
+    // Wait for NTP
+    if (getUnixTimestamp() < 1000)
+    {
+      Serial.println("[SESSION] Waiting for NTP to sync");
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+      continue;
+    }
+
+    if (stateSession == NotStarted && bikeData->speed > 0)
+    {
+      startSession();
+    }
+    else if (stateSession == Paused && bikeData->speed > 0)
+    {
+      resumeSession();
+    }
+    else if (stateSession == Running && bikeData->speed == 0)
+    {
+      pauseSession();
+      Serial.println("[SESSION] Session paused");
+      continue;
+    }
+    else if (stateSession == Paused && bikeData->speed == 0)
+    {
+      // End session if paused for 5 minutes
+      if (getUnixTimestamp() - cycleSession->paused_ts > 300)
+      {
+        stateSession = Ended;
+
+        // Wait for 1 second before restarting
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        ESP.restart();
+      }
+      continue;
+    }
+    else if (stateSession == NotStarted)
+    {
+      continue;
+    }
+
+    // Get live bike metrics for session
+    if (xSemaphoreTake(bikeDataMutex, portMAX_DELAY) == pdTRUE)
+    {
+      cycleSession->data_last = *bikeData;
+      xSemaphoreGive(bikeDataMutex);
+    }
+    else
+    {
+      const char *msg = "[Session] Failed to get mutex";
+      xQueueSend(serialQ, msg, portMAX_DELAY);
+      continue;
+    }
+    BikeData *reading = &cycleSession->data_last;
+    time_t ts = getUnixTimestamp();
+
+    // updateMetrics(reading->speed, reading->power, reading->cadence, reading->hr, ts);
+    updateMetrics(ts);
+
+    printBikeData();
+
+    // Only write to queue 1x a second
+    if (ts > last_metric_ts)
+    {
+      xQueueSend(dataQueue, cycleSession, portMAX_DELAY);
+    }
+
+    // BLE data returns data every 1/3 of a second
+    vTaskDelay(400 / portTICK_PERIOD_MS);
+  }
+}
+
+void taskSerialPrint(void *parameter)
+{
   String item;
-  for (;;) {
-    if (xQueueReceive(serialQ, &item, 0) == pdTRUE) {
+  for (;;)
+  {
+    if (xQueueReceive(serialQ, &item, 0) == pdTRUE)
+    {
       Serial.println(item);
     }
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
-void taskOta(void* parameter) {
-  for (;;) {
+void taskOta(void *parameter)
+{
+  for (;;)
+  {
     ArduinoOTA.handle();
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
+  Serial.println("[SETUP] Creating tasks...");
 
   // Initialize data types needed
   dataQueue = xQueueCreate(20, sizeof(struct CycleSession));
   serialQ = xQueueCreate(20, sizeof(String) * 100);
   bikeData = new BikeData();
   cycleSession = new CycleSession();
-  bikeDataMutex = xSemaphoreCreateMutex();
+  // bikeDataMutex = xSemaphoreCreateMutex();
   initializeSession();
 
   Serial.println("[SETUP] Creating tasks...");
@@ -178,15 +211,21 @@ void setup() {
   xTaskCreate(taskKeepWifiAlive, "WIFI_HANDLE", 2300, NULL, 1, NULL);
   xTaskCreate(taskBLE, "BLE_HANDLE", 4000, NULL, 1, NULL);
   xTaskCreate(taskSession, "SESSION_HANDLE", 1000, NULL, 1, NULL);
-  xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 2, NULL);
-  xTaskCreate(taskSerialPrint, "SERIAL_HANDLE", 1000, NULL, 1, NULL);
-  xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
+  #ifdef ENABLE_DISPLAY
+  if (ENABLE_DISPLAY) {
+        xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 2, NULL);
+  }
+  #endif
+
+  // xTaskCreate(taskSerialPrint, "SERIAL_HANDLE", 1000, NULL, 1, NULL);
+  // xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
   xTaskCreate(taskOta, "OTA_HANDLE", 10000, NULL, 1, NULL);
 
   // Remove Arduino setup and loop tasks
-  vTaskDelete(NULL);
+  //vTaskDelete(NULL);
 }
 
-void loop() {
-  ArduinoOTA.handle();
+void loop()
+{
+  //ArduinoOTA.handle();
 }

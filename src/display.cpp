@@ -1,6 +1,4 @@
 #include "config.h"
-
-#include <Arduino.h>
 #include <Adafruit_ST7735.h>
 
 void updateDisplayMetric(const char* metric, int val, Adafruit_ST7735* tft) {
@@ -83,6 +81,7 @@ void updateDisplayMetric(const char* metric, int val, Adafruit_ST7735* tft) {
 
 void taskDisplay(void* parameter) {
   Adafruit_ST7735* tft = new Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCK, TFT_RST);
+
   pinMode(TFT_BACKLIGHT, OUTPUT);
   digitalWrite(TFT_BACKLIGHT, HIGH);
   bool displayOn = true;

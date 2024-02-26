@@ -17,6 +17,7 @@
 #define INFLUX_DB "fitness"
 #define INFLUX_PRECISION "s"
 
+#define ENABLE_DISPLAY false
 // Display pins
 #define TFT_CS 7
 #define TFT_RST 10
@@ -24,9 +25,6 @@
 #define TFT_SCK 2
 #define TFT_MOSI 3
 #define TFT_BACKLIGHT 5
-
-extern time_t lastBtConnectTime;
-const uint8_t indicationOn[] = { 0x2, 0x0 };
 
 // Live data
 struct BikeData {
@@ -68,7 +66,10 @@ enum StateSession { NotStarted,
                     Paused,
                     Ended };
 
-static BikeData* bikeData;
+extern time_t lastBtConnectTime;
+const uint8_t indicationOn[] = { 0x2, 0x0 };
+
+extern BikeData* bikeData;
 extern SemaphoreHandle_t bikeDataMutex;
 
 // Queue for influxdb metrics
@@ -76,10 +77,10 @@ extern QueueHandle_t dataQueue;
 // Queue for handling serial output
 extern QueueHandle_t serialQ;
 
-static CycleSession* cycleSession;
-static StateSession stateSession;
-static StateBle stateBleBike;
-static StateBle stateBleHr;
+extern CycleSession* cycleSession;
+extern StateSession stateSession;
+extern StateBle stateBleBike;
+extern StateBle stateBleHr;
 
 extern WiFiManager wifiManager;
 
