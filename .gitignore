@@ -1,0 +1,12 @@
+# Python
+.cache
+.local
+
+# PlatformIO
+.clang_complete
+.gcc-flags.json
+.pio
+.pioenvs
+.piolibdeps
+.platformio
+.vscode

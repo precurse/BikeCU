@@ -1,4 +1,5 @@
 #include "config.h"
+#include "utils.h"
 
 #include <FS.h>
 #include <Adafruit_ST7735.h>
@@ -19,11 +20,10 @@
 QueueHandle_t dataQueue;
 QueueHandle_t serialQ;
 SemaphoreHandle_t bikeDataMutex = xSemaphoreCreateMutex();
-BikeData *bikeData;
-CycleSession *cycleSession;
-StateSession stateSession;
+LiveBikeData bikeData;
+CycleSession cycleSession;
 
-void initializeBikeData()
+void initializeBikeData(LiveBikeData* bikeData)
 {
   bikeData->header = 0;
   bikeData->speed = 0;
@@ -39,18 +39,16 @@ void initializeBikeData()
   bikeData->hrCnt = 0;
 }
 
-void initializeSession()
+void initializeSession(LiveBikeData* bd, CycleSession* cs)
 {
-  stateSession = NotStarted;
-
-  initializeBikeData();
-
-  cycleSession->id = 0;
-  cycleSession->calories = 0;
-  cycleSession->distance = 0;
-  cycleSession->duration = 0;
-  cycleSession->paused_t = 0;
-  cycleSession->paused_ts = 0;
+  cs->sessionState = NotStarted;
+  cs->id = 0;
+  cs->calories = 0;
+  cs->distance = 0;
+  cs->duration = 0;
+  cs->paused_t = 0;
+  cs->paused_ts = 0;
+  initializeBikeData(bd);
 }
 
 // TODO: Fix
@@ -65,28 +63,28 @@ void SerialQueueSend(int msg)
   xQueueSend(serialQ, &strMsg, portMAX_DELAY);
 }
 
-void printBikeData()
+void printBikeData(CycleSession* cs)
 {
   Serial.print("Power: ");
-  Serial.print(cycleSession->data_last.power);
+  Serial.print(cs->data_last.power);
   Serial.print(" avg: ");
-  Serial.println(getPowerAvg());
+  Serial.println(getPowerAvg(cs));
   Serial.print("Speed: ");
-  Serial.print(cycleSession->data_last.speed);
+  Serial.print(cs->data_last.speed);
   Serial.print(" avg: ");
-  Serial.println(getSpeedAvg());
+  Serial.println(getSpeedAvg(cs));
   Serial.print("HR: ");
-  Serial.println(cycleSession->data_last.hr);
+  Serial.println(cs->data_last.hr);
   Serial.print("Cadence: ");
-  Serial.print(cycleSession->data_last.cadence);
+  Serial.print(cs->data_last.cadence);
   Serial.print(" avg: ");
-  Serial.println(getCadenceAvg());
+  Serial.println(getCadenceAvg(cs));
   Serial.print("Distance: ");
-  Serial.println(cycleSession->distance);
+  Serial.println(cs->distance);
   Serial.print("Duration: ");
-  Serial.println(cycleSession->duration);
+  Serial.println(cs->duration);
   Serial.print("Calories: ");
-  Serial.println(cycleSession->calories);
+  Serial.println(cs->calories);
 }
 
 void taskSession(void *parameter)
@@ -100,7 +98,7 @@ void taskSession(void *parameter)
 
   for (;;)
   {
-    // Wait for NTP
+    // Wait for NTP and wifi, since timestamp needed for session identifier
     if (getUnixTimestamp() < 1000)
     {
       Serial.println("[SESSION] Waiting for NTP to sync");
@@ -108,26 +106,26 @@ void taskSession(void *parameter)
       continue;
     }
 
-    if (stateSession == NotStarted && bikeData->speed > 0)
+    if (cycleSession.sessionState == NotStarted && bikeData.speed > 0)
     {
-      startSession();
+      startSession(&cycleSession);
     }
-    else if (stateSession == Paused && bikeData->speed > 0)
+    else if (cycleSession.sessionState == Paused && bikeData.speed > 0)
     {
-      resumeSession();
+      resumeSession(&cycleSession);
     }
-    else if (stateSession == Running && bikeData->speed == 0)
+    else if (cycleSession.sessionState == Running && bikeData.speed == 0)
     {
-      pauseSession();
+      pauseSession(&cycleSession);
       Serial.println("[SESSION] Session paused");
       continue;
     }
-    else if (stateSession == Paused && bikeData->speed == 0)
+    else if (cycleSession.sessionState == Paused && bikeData.speed == 0)
     {
       // End session if paused for 5 minutes
-      if (getUnixTimestamp() - cycleSession->paused_ts > 300)
+      if (getUnixTimestamp() - cycleSession.paused_ts > 300)
       {
-        stateSession = Ended;
+        cycleSession.sessionState = Ended;
 
         // Wait for 1 second before restarting
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -135,7 +133,7 @@ void taskSession(void *parameter)
       }
       continue;
     }
-    else if (stateSession == NotStarted)
+    else if (cycleSession.sessionState == NotStarted)
     {
       continue;
     }
@@ -143,7 +141,7 @@ void taskSession(void *parameter)
     // Get live bike metrics for session
     if (xSemaphoreTake(bikeDataMutex, portMAX_DELAY) == pdTRUE)
     {
-      cycleSession->data_last = *bikeData;
+      cycleSession.data_last = bikeData;
       xSemaphoreGive(bikeDataMutex);
     }
     else
@@ -152,18 +150,24 @@ void taskSession(void *parameter)
       xQueueSend(serialQ, msg, portMAX_DELAY);
       continue;
     }
-    BikeData *reading = &cycleSession->data_last;
+    LiveBikeData *reading = &cycleSession.data_last;
     time_t ts = getUnixTimestamp();
 
-    // updateMetrics(reading->speed, reading->power, reading->cadence, reading->hr, ts);
-    updateMetrics(ts);
+    updateMetrics(&cycleSession, ts);
 
-    printBikeData();
+    printBikeData(&cycleSession);
 
     // Only write to queue 1x a second
     if (ts > last_metric_ts)
     {
-      xQueueSend(dataQueue, cycleSession, portMAX_DELAY);
+      // If queue full, prune off earliest item
+      if (!uxQueueSpacesAvailable(dataQueue) > 0) {
+        Serial.println("[SESSION] dataQueue full. Removing oldest");
+        CycleSession pruneSession;
+        xQueueReceive(dataQueue, &pruneSession, 0);
+      }
+
+      xQueueSend(dataQueue, &cycleSession, portMAX_DELAY);
     }
 
     #ifdef DEBUG
@@ -201,15 +205,17 @@ void taskOta(void *parameter)
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("[SETUP] Creating tasks...");
+  #ifdef DEBUG
+  if (DEBUG) {
+        delay(1000);
+  }
+  #endif
 
   // Initialize data types needed
   dataQueue = xQueueCreate(20, sizeof(struct CycleSession));
   serialQ = xQueueCreate(20, sizeof(String) * 100);
-  bikeData = new BikeData();
-  cycleSession = new CycleSession();
   // bikeDataMutex = xSemaphoreCreateMutex();
-  initializeSession();
+  initializeSession(&bikeData, &cycleSession);
 
   Serial.println("[SETUP] Creating tasks...");
   // 768 bytes is required for task overhead
@@ -223,7 +229,11 @@ void setup()
   #endif
 
   // xTaskCreate(taskSerialPrint, "SERIAL_HANDLE", 1000, NULL, 1, NULL);
-  xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
+  #ifdef ENABLE_INFLUX
+  if (ENABLE_INFLUX) {
+    xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
+  }
+  #endif
   xTaskCreate(taskOta, "OTA_HANDLE", 10000, NULL, 1, NULL);
 
   // Remove Arduino setup and loop tasks

@@ -29,11 +29,11 @@ void taskInflux(void *parameter)
 
         data += String(INFLUX_DB) + ",id=" + String(session.id) + " "
                 + "power_last=" + String(session.data_last.power) + ","
-                + "power_avg=" + String(getPowerAvg()) + ","
+                + "power_avg=" + String(getPowerAvg(&session)) + ","
                 + "cadence_last=" + String(session.data_last.cadence / 2) + ","
-                + "cadence_avg=" + String(getCadenceAvg() / 2) + ","
+                + "cadence_avg=" + String(getCadenceAvg(&session) / 2) + ","
                 + "speed_last=" + String(session.data_last.speed) + ","
-                + "speed_avg=" + String(getSpeedAvg()) + ","
+                + "speed_avg=" + String(getSpeedAvg(&session)) + ","
                 + "calories=" + String(session.calories) + ","
                 + "distance=" + String(session.distance) + ","
                 + "duration=" + String(session.duration);
@@ -41,7 +41,7 @@ void taskInflux(void *parameter)
         // Don't send HR if not detected
         if (session.data_last.hrCnt > 0)
         {
-          data += String(",hr_last=") + String(session.data_last.hr) + "," + "hr_avg=" + String(getHrAvg());
+          data += String(",hr_last=") + String(session.data_last.hr) + "," + "hr_avg=" + String(getHrAvg(&session));
           // bytesWritten += snprintf(data + bytesWritten, bs - bytesWritten,
           //                          ",hr_last=%d,hr_avg=%d",
           //                          session.data_last.hr, session.hr_avg);

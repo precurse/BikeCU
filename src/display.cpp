@@ -90,8 +90,6 @@ void taskDisplay(void* parameter) {
   tft->fillScreen(ST7735_BLACK);
   tft->setTextColor(0xFFFF, 0x0000);
 
-  CycleSession* cs = cycleSession;
-
   int val = 0;
   int pwr_max = 0;
   int hr_max = 0;
@@ -109,40 +107,36 @@ void taskDisplay(void* parameter) {
       displayOn = true;
     }
 
-    //val = cs->data_last.power;
-    val = bikeData->power;
+    val = bikeData.power;
     updateDisplayMetric("PWR", val, tft);
     if (val > pwr_max) {
       pwr_max = val;
     }
 
-    val = getPowerAvg();
+    val = getPowerAvg(&cycleSession);
     updateDisplayMetric("PWRAVG", val, tft);
     updateDisplayMetric("PWRMAX", pwr_max, tft);
 
-    //val = cs->data_last.hr;
-    val = bikeData->hr;
+    val = bikeData.hr;
     updateDisplayMetric("HR", val, tft);
     if (val > hr_max) {
       hr_max = val;
     }
     updateDisplayMetric("HRMAX", hr_max, tft);
 
-    //val = cs->data_last.cadence / 2;  // Cadence must be divided by 2
-    val = bikeData->cadence / 2;
+    val = bikeData.cadence / 2;
     updateDisplayMetric("RPM", val, tft);
 
-    val = getCadenceAvg() / 2;  // Cadence must be divided by 2
+    val = getCadenceAvg(&cycleSession) / 2;  // Cadence must be divided by 2
     updateDisplayMetric("RPMAVG", val, tft);
 
-    //val = cs->data_last.speed;
-    val = bikeData->speed;
+    val = bikeData.speed;
     updateDisplayMetric("SPD", val, tft);
 
-    val = getSpeedAvg();
+    val = getSpeedAvg(&cycleSession);
     updateDisplayMetric("SPDAVG", val, tft);
 
-    val = cs->distance;
+    val = cycleSession.distance;
     updateDisplayMetric("DIST", val, tft);
 
     // Last line
@@ -171,7 +165,7 @@ void taskDisplay(void* parameter) {
     tft->setCursor(90, 120);
     tft->print("B%:");
 
-    val = bikeData->hrBatt;
+    val = bikeData.hrBatt;
     if (val < 10) {
       tft->print("   ");
     } else if (val < 100) {
@@ -181,12 +175,12 @@ void taskDisplay(void* parameter) {
     }
     // Don't display value if 0
     if (val > 0) {
-      tft->print(bikeData->hrBatt);
+      tft->print(bikeData.hrBatt);
     }
 
     tft->setCursor(140, 120);
     //tft->print("S: ");
-    switch (stateSession) {
+    switch (cycleSession.sessionState) {
       case NotStarted:
         tft->println("NS");
         break;
