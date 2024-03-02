@@ -1,13 +1,10 @@
 #include "config.h"
 #include "utils.h"
 
-#include <FS.h>
-#include <Adafruit_ST7735.h>
 #include <ArduinoOTA.h>
 #include "NTPClient.h"
 #include "time.h"
 #include "WiFi.h"
-#include "HTTPClient.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -19,7 +16,7 @@
 // Globals
 QueueHandle_t dataQueue;
 QueueHandle_t serialQ;
-SemaphoreHandle_t bikeDataMutex = xSemaphoreCreateMutex();
+SemaphoreHandle_t bikeDataMutex;
 LiveBikeData bikeData;
 CycleSession cycleSession;
 
@@ -180,6 +177,7 @@ void taskSession(void *parameter)
   }
 }
 
+// TODO: Get working
 void taskSerialPrint(void *parameter)
 {
   String item;
@@ -206,25 +204,27 @@ void setup()
 {
   Serial.begin(115200);
   #ifdef DEBUG
-  if (DEBUG) {
-        delay(1000);
-  }
+    delay(1000);
   #endif
 
   // Initialize data types needed
   dataQueue = xQueueCreate(20, sizeof(struct CycleSession));
   serialQ = xQueueCreate(20, sizeof(String) * 100);
-  // bikeDataMutex = xSemaphoreCreateMutex();
+  bikeDataMutex = xSemaphoreCreateMutex();
   initializeSession(&bikeData, &cycleSession);
 
   Serial.println("[SETUP] Creating tasks...");
   // 768 bytes is required for task overhead
+  #ifndef STANDALONE_MODE
   xTaskCreate(taskKeepWifiAlive, "WIFI_HANDLE", 2300, NULL, 1, NULL);
+  #endif
+
   xTaskCreate(taskBLE, "BLE_HANDLE", 4000, NULL, 1, NULL);
   xTaskCreate(taskSession, "SESSION_HANDLE", 1000, NULL, 1, NULL);
+  
   #ifdef ENABLE_DISPLAY
   if (ENABLE_DISPLAY) {
-        xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 2, NULL);
+      xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 1, NULL);
   }
   #endif
 
@@ -234,7 +234,9 @@ void setup()
     xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
   }
   #endif
-  xTaskCreate(taskOta, "OTA_HANDLE", 10000, NULL, 1, NULL);
+  #ifndef STANDALONE_MODE
+    xTaskCreate(taskOta, "OTA_HANDLE", 1000, NULL, 1, NULL);
+  #endif
 
   // Remove Arduino setup and loop tasks
   vTaskDelete(NULL);
@@ -242,5 +244,4 @@ void setup()
 
 void loop()
 {
-  ArduinoOTA.handle();
 }
