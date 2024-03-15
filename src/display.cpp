@@ -1,5 +1,4 @@
-#include "config.h"
-#include <Adafruit_ST7735.h>
+#include "display.h"
 
 void updateDisplayMetric(const char* metric, int val, Adafruit_ST7735* tft) {
   int x = 0;

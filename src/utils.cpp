@@ -1,12 +1,61 @@
-#include "config.h"
-#include "types.h"
-#include "constants.h"
-#include <time.h>
+#include "utils.h"
 
 time_t getUnixTimestamp() {
   time_t now;
   time(&now);
   return now;
+}
+
+void initializeBikeData(LiveBikeData* bikeData)
+{
+  bikeData->header = 0;
+  bikeData->speed = 0;
+  bikeData->cadence = 0;
+  bikeData->power = 0;
+  bikeData->hr = 0;
+  bikeData->hrBatt = 0;
+  bikeData->speedAccum = 0;
+  bikeData->cadenceAccum = 0;
+  bikeData->powerAccumu = 0;
+  bikeData->metricCnt = 0;
+  bikeData->hrAccum = 0;
+  bikeData->hrCnt = 0;
+}
+
+void initializeSession(LiveBikeData* bd, CycleSession* cs)
+{
+  cs->sessionState = NotStarted;
+  cs->id = 0;
+  cs->calories = 0;
+  cs->distance = 0;
+  cs->duration = 0;
+  cs->paused_t = 0;
+  cs->paused_ts = 0;
+  initializeBikeData(bd);
+}
+
+void printBikeData(CycleSession* cs)
+{
+  Serial.print("Power: ");
+  Serial.print(cs->data_last.power);
+  Serial.print(" avg: ");
+  Serial.println(getPowerAvg(cs));
+  Serial.print("Speed: ");
+  Serial.print(cs->data_last.speed);
+  Serial.print(" avg: ");
+  Serial.println(getSpeedAvg(cs));
+  Serial.print("HR: ");
+  Serial.println(cs->data_last.hr);
+  Serial.print("Cadence: ");
+  Serial.print(cs->data_last.cadence);
+  Serial.print(" avg: ");
+  Serial.println(getCadenceAvg(cs));
+  Serial.print("Distance: ");
+  Serial.println(cs->distance);
+  Serial.print("Duration: ");
+  Serial.println(cs->duration);
+  Serial.print("Calories: ");
+  Serial.println(cs->calories);
 }
 
 void startSession(CycleSession* cs) {
@@ -82,4 +131,30 @@ void updateMetrics(CycleSession* cs, time_t ts) {
   updateDistance(cs, speedAvg);
   // Update calories last (relies on duration)
   updateCalories(cs, powerAvg);
+}
+
+// TODO: Fix
+void SerialQueueSend(String msg)
+{
+  xQueueSend(serialQ, &msg, portMAX_DELAY);
+}
+
+void SerialQueueSend(int msg)
+{
+  String strMsg = String(msg);
+  xQueueSend(serialQ, &strMsg, portMAX_DELAY);
+}
+
+// TODO: Get working
+void taskSerialPrint(void *parameter)
+{
+  String item;
+  for (;;)
+  {
+    if (xQueueReceive(serialQ, &item, 0) == pdTRUE)
+    {
+      Serial.println(item);
+    }
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
 }

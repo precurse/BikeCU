@@ -1,12 +1,23 @@
-#include <WiFi.h>
-#include <ArduinoOTA.h>
 #include "config.h"
 
-WiFiManager wifiManager;
+#ifdef FEATURE_WIFI
+#include <WiFi.h>
 
-// TODO: Move to WifiManager
-const char* ota_name = "esp32-bikecu";
-const char* ota_password = "foobar";
+#ifdef FEATURE_OTA
+#include <ArduinoOTA.h>
+#endif
+
+WiFiManager wifiManager;
+WiFiManagerParameter custom_btle_name("bikeName", "Bike BT Name", "", 40);
+
+void taskOta(void *parameter)
+{
+  for (;;)
+  {
+    ArduinoOTA.handle();
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
+}
 
 void taskKeepWifiAlive(void* parameter) {
   for (;;) {
@@ -21,7 +32,7 @@ void taskKeepWifiAlive(void* parameter) {
     Serial.println("[WIFI] Connecting");
     WiFi.mode(WIFI_STA);
 
-    //wifiManager.resetSettings(); // wipe settings
+    // wifiManager.resetSettings(); // wipe settings
 
     // Setup WifiManager
     bool res;
@@ -32,6 +43,7 @@ void taskKeepWifiAlive(void* parameter) {
       // HR Monitor on/off
       // InfluxDB on/off
       // InfluxDB destination
+    // wifiManager.addParameter(&custom_btle_name);
 
     wifiManager.setConfigPortalTimeout(300); // auto close configportal after 5 minutes
   // std::vector<const char *> menu = {"wifi","info","param","sep","restart","exit"};
@@ -59,8 +71,8 @@ void taskKeepWifiAlive(void* parameter) {
     ArduinoOTA.setHostname(OTA_NAME);
     ArduinoOTA.setPassword(OTA_PASSWORD);
     ArduinoOTA.begin();
-    #endif
     Serial.println("[WIFI] OTA Initialized");
+    #endif
 
     Serial.println("[WIFI] Connected");
     Serial.println(WiFi.localIP());
@@ -83,3 +95,4 @@ void saveParamCallback(){
   Serial.println("[CALLBACK] saveParamCallback fired");
   Serial.println("PARAM customfieldid = " + getParam("customfieldid"));
 }
+#endif
