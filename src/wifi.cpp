@@ -34,7 +34,10 @@ void taskKeepWifiAlive(void* parameter) {
       // InfluxDB destination
 
     wifiManager.setConfigPortalTimeout(300); // auto close configportal after 5 minutes
-    res = wifiManager.autoConnect("BikeCU");
+  // std::vector<const char *> menu = {"wifi","info","param","sep","restart","exit"};
+  // wifiManager.setMenu(menu);
+
+    res = wifiManager.autoConnect(WIFIMGR_SSID);
     if(!res) {
       Serial.println("Failed to connect");
       ESP.restart();
@@ -52,11 +55,14 @@ void taskKeepWifiAlive(void* parameter) {
       vTaskDelay(WIFI_RECOVER_TIME_MS / portTICK_PERIOD_MS);
       continue;
     }
-    ArduinoOTA.setHostname(ota_name);
-    ArduinoOTA.setPassword(ota_password);
+    #ifdef FEATURE_OTA
+    ArduinoOTA.setHostname(OTA_NAME);
+    ArduinoOTA.setPassword(OTA_PASSWORD);
     ArduinoOTA.begin();
+    #endif
     Serial.println("[WIFI] OTA Initialized");
-    Serial.println("[WIFI] Connected: ");
+
+    Serial.println("[WIFI] Connected");
     Serial.println(WiFi.localIP());
     configTime(0, 0, NTP_SERVER);
     // Update BT time once time sync'd

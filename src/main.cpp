@@ -215,27 +215,24 @@ void setup()
 
   Serial.println("[SETUP] Creating tasks...");
   // 768 bytes is required for task overhead
-  #ifndef STANDALONE_MODE
+  #ifdef FEATURE_WIFI
   xTaskCreate(taskKeepWifiAlive, "WIFI_HANDLE", 2300, NULL, 1, NULL);
   #endif
 
   xTaskCreate(taskBLE, "BLE_HANDLE", 4000, NULL, 1, NULL);
   xTaskCreate(taskSession, "SESSION_HANDLE", 1000, NULL, 1, NULL);
   
-  #ifdef ENABLE_DISPLAY
-  if (ENABLE_DISPLAY) {
-      xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 1, NULL);
-  }
+  #ifdef FEATURE_DISPLAY
+  xTaskCreate(taskDisplay, "DISPLAY_HANDLE", 1000, NULL, 2, NULL);
   #endif
 
   // xTaskCreate(taskSerialPrint, "SERIAL_HANDLE", 1000, NULL, 1, NULL);
-  #ifdef ENABLE_INFLUX
-  if (ENABLE_INFLUX) {
+  #ifdef FEATURE_INFLUX
     xTaskCreate(taskInflux, "INFLUX_HANDLE", 2000, NULL, 1, NULL);
-  }
   #endif
-  #ifndef STANDALONE_MODE
-    xTaskCreate(taskOta, "OTA_HANDLE", 1000, NULL, 1, NULL);
+
+  #ifdef FEATURE_OTA
+    xTaskCreate(taskOta, "OTA_HANDLE", 1000, NULL, 2, NULL);
   #endif
 
   // Remove Arduino setup and loop tasks

@@ -31,4 +31,6 @@ static NimBLEUUID hrBattCharUUID((uint16_t)0x2a19);
 
 const uint8_t indicationOn[] = {0x2, 0x0};
 
+#define SECONDS_PER_HOUR 3600
+
 #endif
